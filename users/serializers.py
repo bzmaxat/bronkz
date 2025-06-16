@@ -5,6 +5,7 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import serializers
 from .models import CustomUser
+from .tasks import send_activation_email
 
 
 class UserRegistrationSerializer(serializers.Serializer):
@@ -22,12 +23,10 @@ class UserRegistrationSerializer(serializers.Serializer):
         link = f"http://localhost:8000/api/users/confirm-email/?uid={uid}&token={token}"
         print(link)
 
-        send_mail(
+        send_activation_email.delay(
+            user.email,
             subject='Подтверждение регистрации',
-            message=f'Перейдите по ссылке для подтверждения: {link}',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False
+            message=f'Перейдите по ссылке для подтверждения: {link}'
         )
 
         return user
