@@ -13,6 +13,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -170,3 +171,11 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # или другой брокер
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+
+CELERY_BEAT_SCHEDULE = {
+    "auto_complete_bookings": {
+        "task": "booking.tasks.auto_complete_bookings",
+        "schedule": crontab(minute='*/5')
+    }
+}

@@ -1,6 +1,6 @@
 .idea/
 .env
-__pycache__/
+**/__pycache__
 *.pyc
 *.pyo
 *.pyd
@@ -8,3 +8,4 @@ __pycache__/
 env/
 venv/
 *.egg-info/
+celerybeat-schedule.*

@@ -21,11 +21,15 @@ class Place(models.Model):
     close_time = models.TimeField()
     slot_duration = models.PositiveIntegerField(help_text='Slot duration in minutes', default=60)
     capacity = models.PositiveIntegerField(default=1)
-
     category = models.CharField(
         max_length=20,
         choices=PlaceCategory.choices,
         default=PlaceCategory.OTHER
+    )
+    managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='managed_places',
+        blank=True
     )
 
     def __str__(self):

@@ -54,3 +54,9 @@ class PlaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Place
         fields = '__all__'
+
+
+class PlaceManagerUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Place
+        fields = ['open_time', 'close_time', 'slot_duration', 'capacity']

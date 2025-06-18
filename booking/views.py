@@ -5,13 +5,24 @@ from django.utils.timezone import now
 from datetime import datetime, timedelta
 
 from .models import Place, Booking, BookingStatus
-from .serializers import PlaceSerializer, BookingSerializer
+from .serializers import PlaceSerializer, BookingSerializer, PlaceManagerUpdateSerializer
+from .permissions import IsPlaceManager
 
 
 class PlaceViewSet(viewsets.ModelViewSet):
     queryset = Place.objects.all()
     serializer_class = PlaceSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == 'partial_update':
+            return [IsPlaceManager()]
+        return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.action == 'partial_update':
+            return PlaceManagerUpdateSerializer
+        return super().get_serializer_class()
 
     @action(detail=True, methods=['get'], url_path='available-times')
     def available_times(self, request, pk=None):
@@ -140,7 +151,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def confirm(self, request, pk=None):
         booking = self.get_object()
 
-        if not request.user.is_staff:
+        if not request.user.role == 'manager':
             return Response({"detail": "Нет прав"}, status=403)
 
         if booking.status != BookingStatus.PENDING:
