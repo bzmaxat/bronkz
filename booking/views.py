@@ -151,7 +151,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def confirm(self, request, pk=None):
         booking = self.get_object()
 
-        if not request.user.role == 'manager':
+        if not request.user.role == 'manager' or not booking.place.managers.filter(id=request.user.id).exists():
             return Response({"detail": "Нет прав"}, status=403)
 
         if booking.status != BookingStatus.PENDING:
@@ -166,7 +166,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         booking = self.get_object()
 
-        if not request.user.is_staff:
+        if not request.user.role == 'manager' or not booking.place.managers.filter(id=request.user.id).exists():
             return Response({"detail": "Нет прав"}, status=403)
 
         if booking.status not in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
