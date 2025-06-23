@@ -3,12 +3,45 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils.timezone import now
 from datetime import datetime, timedelta
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiParameter
 
 from .models import Place, Booking, BookingStatus
 from .serializers import PlaceSerializer, BookingSerializer, PlaceManagerUpdateSerializer
 from .permissions import IsPlaceManager
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список залов",
+        description="Возвращает все объекты типа Place.",
+        tags=["Залы"]
+    ),
+    retrieve=extend_schema(
+        summary="Информация о зале",
+        description="Детальная информация об одном объекте по ID.",
+        tags=["Залы"]
+    ),
+    create=extend_schema(
+        summary="Создание зала",
+        description="Создание нового объекта Place (для админов).",
+        tags=["Залы"]
+    ),
+    update=extend_schema(
+        summary="Полное обновление зала",
+        description="Заменяет весь объект Place.",
+        tags=["Залы"]
+    ),
+    partial_update=extend_schema(
+        summary="Частичное обновление зала",
+        description="Изменяет указанные поля объекта Place.",
+        tags=["Залы"]
+    ),
+    destroy=extend_schema(
+        summary="Удаление зала",
+        description="Удаляет объект Place по ID.",
+        tags=["Залы"]
+    ),
+)
 class PlaceViewSet(viewsets.ModelViewSet):
     queryset = Place.objects.all()
     serializer_class = PlaceSerializer
@@ -24,6 +57,14 @@ class PlaceViewSet(viewsets.ModelViewSet):
             return PlaceManagerUpdateSerializer
         return super().get_serializer_class()
 
+    @extend_schema(
+        summary="Список доступных тайм-слотов",
+        description="Возвращает список доступных тайм-слотов для конкретного объекта на указанную дату.",
+        parameters=[
+            OpenApiParameter(name='date', description='Дата YYYY-MM-DD', required=True, type=str),
+        ],
+        tags=['Залы']
+    )
     @action(detail=True, methods=['get'], url_path='available-times')
     def available_times(self, request, pk=None):
         """
@@ -69,6 +110,15 @@ class PlaceViewSet(viewsets.ModelViewSet):
 
         return Response(slots)
 
+    @extend_schema(
+        summary="Список доступных залов",
+        description="Возвращает список залов, доступных для бронирования на указанную дату и время.",
+        parameters=[
+            OpenApiParameter(name='date', description='Дата YYYY-MM-DD', required=True, type=str),
+            OpenApiParameter(name='time', description='Время HH:MM', required=True, type=str),
+        ],
+        tags=['Залы']
+    )
     @action(detail=False, methods=['get'], url_path='available')
     def available(self, request):
         date_str = request.query_params.get('date')
@@ -120,6 +170,16 @@ class BookingViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @extend_schema(
+        summary="Отмена бронирования",
+        description="Пользователель отменяет бронирование. Статус меняется с 'pending' на 'cancelled'.",
+        responses={
+            200: OpenApiResponse(description='Бронь отменена'),
+            400: OpenApiResponse(description='Уже отменена'),
+            403: OpenApiResponse(description='Нет доступа'),
+        },
+        tags=['Бронирования']
+    )
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
         booking = self.get_object()
@@ -136,6 +196,11 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.save()
         return Response({"detail": "Бронь отменена"}, status=200)
 
+    @extend_schema(
+        summary="Проверка своих бронировании",
+        description="Возвращает список бронировании, разделенных по статусу",
+        tags=['Бронирования']
+    )
     @action(detail=False, methods=['get'], url_path='my')
     def my(self, request):
         bookings = self.get_queryset()
@@ -147,6 +212,16 @@ class BookingViewSet(viewsets.ModelViewSet):
             data[value] = serializer.data
         return Response(data)
 
+    @extend_schema(
+        summary="Подтверждение бронирования",
+        description="Менеджер зала подтверждает бронирование. Статус меняется с 'pending' на 'confirmed'.",
+        responses={
+            200: OpenApiResponse(description="Бронь успешно подтверждена"),
+            400: OpenApiResponse(description="Бронь не может быть подтверждена в текущем статусе"),
+            403: OpenApiResponse(description="Нет прав доступа"),
+        },
+        tags=['Бронирования']
+    )
     @action(detail=True, methods=['post'], url_path='confirm')
     def confirm(self, request, pk=None):
         booking = self.get_object()
@@ -162,6 +237,16 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "Бронь подтверждена"}, status=200)
 
+    @extend_schema(
+        summary="Завершение бронирования",
+        description="Менеджер вручную завершает бронирование (например, по факту визита клиента).",
+        responses={
+            200: OpenApiResponse(description="Бронь завершена"),
+            400: OpenApiResponse(description="Бронь не может быть завершена"),
+            403: OpenApiResponse(description="Нет прав доступа"),
+        },
+        tags=['Бронирования']
+    )
     @action(detail=True, methods=['post'], url_path='complete')
     def complete(self, request, pk=None):
         booking = self.get_object()

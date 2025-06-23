@@ -9,6 +9,8 @@ from users.models import CustomUser
 
 
 class RegisterView(views.APIView):
+    serializer_class = UserRegistrationSerializer
+
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
