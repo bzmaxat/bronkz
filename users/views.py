@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
-from .serializers import UserRegistrationSerializer, UserPublicSerializer
+from .serializers import UserRegistrationSerializer, UserPublicSerializer, UserUpdateSerializer
 from users.models import CustomUser
 from booking.models import Booking, BookingStatus
 
@@ -50,15 +50,22 @@ class ConfirmEmailView(views.APIView):
 class UserViewSet(GenericViewSet):
     permission_classes = [IsAuthenticated]
 
-    @action(detail=False, methods=['get'], url_path='me')
+    @action(detail=False, methods=['get', 'patch'], url_path='me')
     def me(self, request):
         user = request.user
-        data = UserPublicSerializer(user).data
 
-        bookings = Booking.objects.filter(user=user)
-        data['total_bookings'] = bookings.count()
-        data['completed_bookings'] = bookings.filter(status=BookingStatus.COMPLETED).count()
-        return Response(data, status=200)
+        if request.method == 'GET':
+            data = UserPublicSerializer(user).data
+            bookings = Booking.objects.filter(user=user)
+            data['total_bookings'] = bookings.count()
+            data['completed_bookings'] = bookings.filter(status=BookingStatus.COMPLETED).count()
+            return Response(data, status=200)
+
+        elif request.method == 'PATCH':
+            serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(UserPublicSerializer(user).data)
 
     @action(detail=False, methods=['get'], url_path='me/stats')
     def stats(self, request):
