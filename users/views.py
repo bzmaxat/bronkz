@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import UserRegistrationSerializer, UserPublicSerializer, UserUpdateSerializer
 from users.models import CustomUser
 from booking.models import Booking, BookingStatus
+from logs.models import ActivityLog
 
 
 class RegisterView(views.APIView):
@@ -36,12 +37,19 @@ class ConfirmEmailView(views.APIView):
             user_id = int(urlsafe_base64_decode(uid).decode())
             user = CustomUser.objects.get(pk=user_id)
         except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
-            return Http404("Пользователь не найден")
+            return Response({"detail": "Пользователь не найден"}, status=404)
 
         confirm = default_token_generator.check_token(user, token)
         if confirm:
             user.is_active = True
             user.save()
+
+            ActivityLog.objects.create(
+                user=user,
+                action='Подтвердил email',
+                content_object=user
+            )
+
             return Response({"detail": "Email подтвержден"}, status=200)
 
         return Response({"detail": "Неверная или устаревшая ссылка подтверждения"}, status=400)

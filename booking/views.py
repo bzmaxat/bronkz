@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from datetime import datetime, timedelta
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse, OpenApiParameter
 
+from logs.models import ActivityLog
 from .models import Place, Booking, BookingStatus
 from .serializers import PlaceSerializer, BookingSerializer, PlaceManagerUpdateSerializer
 from .permissions import IsPlaceManager
@@ -55,6 +56,22 @@ class PlaceViewSet(viewsets.ModelViewSet):
         if self.action == 'partial_update':
             return PlaceManagerUpdateSerializer
         return super().get_serializer_class()
+
+    def perform_create(self, serializer):
+        place = serializer.save()
+        ActivityLog.objects.create(
+            user=self.request.user,
+            action="Создал заведение",
+            content_object=place
+        )
+
+    def perform_update(self, serializer):
+        place = serializer.save()
+        ActivityLog.objects.create(
+            user=self.request.user,
+            action="Обновил заведение",
+            content_object=place
+        )
 
     @extend_schema(
         summary="Список доступных тайм-слотов",
@@ -164,7 +181,10 @@ class BookingViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        user = self.request.user
+        if user.is_staff or user.role == 'manager':
+            return Booking.objects.all()
+        return Booking.objects.filter(user=user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -193,6 +213,13 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         booking.status = BookingStatus.CANCELLED
         booking.save()
+
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Отменил бронирование',
+            content_object=booking
+        )
+
         return Response({"detail": "Бронь отменена"}, status=200)
 
     @extend_schema(
@@ -234,6 +261,12 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.status = BookingStatus.CONFIRMED
         booking.save()
 
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Подтвердил бронирование',
+            content_object=booking
+        )
+
         return Response({"detail": "Бронь подтверждена"}, status=200)
 
     @extend_schema(
@@ -258,6 +291,12 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         booking.status = BookingStatus.COMPLETED
         booking.save()
+
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Завершил бронирование',
+            content_object=booking
+        )
 
         return Response({"detail": "Бронь завершена"}, status=200)
 

@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'booking',
     'drf_spectacular',
     'django_celery_beat',
+    'logs',
 ]
 
 MIDDLEWARE = [
